@@ -1,0 +1,56 @@
+; _/_/_/_/_/_/_/_/_/_/_/_/_/_/
+
+ver = "弾道計算"
+
+; _/_/_/_/_/_/_/_/_/_/_/_/_/_/
+
+#module
+	#deffunc point double a ,double b
+		pset a+20.0,280.0-b*2.0
+		;dialog "(" + str(a+20)+","+str(280.0-b)+")" : wait 10
+	return
+#global
+
+	size = 2.0
+	gap_x = 0.1
+	gap_d = 0.05
+
+	pi = 3.1415
+	g = 9.8
+	v = 50.0
+
+	max_x = 0.0
+
+	sx = 400 : sy = 300
+	
+screen 0,sx,sy,,0
+	color 255,255,255 : boxf
+
+	color 0,0,0
+		line 0,sy-20,320,sy-20
+		line 20,0,20,sy
+
+		pos 13,0 : mes "↑"
+		pos 310,sy-29 : mes "→"
+		pos 10,sy-25 : mes "o"
+
+	pos 0,0
+
+deg = 0.0
+x = 0.0 : y = 0.0
+repeat
+	repeat
+		y = -(x*x*g)/(2.0*v*v*cos(deg)*cos(deg))+x*tan(deg)
+		color 150,150,150
+		if y < 0 : break
+		point x,y
+		x += gap_x
+	loop
+	wait 1
+	if max_x < x : max_x = x
+	x = 0.0
+	deg += gap_d
+	if deg > pi/2 : break
+loop
+dialog "処理終了"
+
