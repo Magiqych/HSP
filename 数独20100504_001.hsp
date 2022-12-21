@@ -1,0 +1,753 @@
+
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
+
+ver =  "数独解析プログラム"
+ver += "ver20100504001"
+
+;_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
+
+
+;----------------------------------------
+;　　　　割り込み処理定義領域
+;----------------------------------------
+
+;----------------------------------------
+;　　　　　　変数定義領域
+;----------------------------------------
+a = 0 : b = 0 : c = 0 : d = 0	;便宜変数
+e = 0 : f = 0 : g = 0 : h = 0	
+dim kakutei,9,9					;既に数字が確定している升目の数字の保持変数
+dim mitei,9,9,10
+situ_now = "clear"
+masu.key = 1					;現在アクティブになっているマスの座標
+posi_masu_x = 10				;格子の描写開始x座標
+posi_masu_y = 30				;格子の描写開始y座標
+err_flg = ""					;数独のルールに反するものがあった場合、解析せずにreturnする
+
+;----------------------------------------
+;　　　　オブジェクト指定領域
+;----------------------------------------
+screen 0, 1020,700 : title ver : fir_dir = dir_cur
+sdim log
+log  = "_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/\n\n"
+log += ver + "\n\n"
+log += "_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/\n\n"
+objsize 400,470 : pos 500,30
+mesbox log,500,470,1 : mesbox_HWND = objinfo(stat,2)
+objsize 120,20
+pos 0,0 	:	button gosub "問題読み込み", *file_load
+pos 120,0	:	button gosub "解析開始", *comp
+pos 240,0	:	button gosub "升目状態ログ出力", *make_masu_log
+onexit *owari
+
+;----------------------------------------
+;　　　　　　初期描写領域
+;----------------------------------------
+gosub *first_koushi_disp
+
+;----------------------------------------
+;　　　　　　メインループ
+;----------------------------------------
+repeat
+	redraw 0
+		gosub *masu_move
+		gosub *disp_masu
+		wait 5
+	redraw 1
+loop
+
+;----------------------------------------
+;　　　　　サブルーチン領域
+;----------------------------------------
+;数独解析ルーチン
+*comp
+	repeat 
+		gosub *comp_chk_err
+		if err_flg != "" {
+			log += err_flg : gosub *log_update
+			break
+		}
+
+		gosub *comp_chk_tate		:	gosub *comp_input_ver_update
+		gosub *comp_chk_yoko		:	gosub *comp_input_ver_update
+		gosub *comp_chk_koushi		:	gosub *comp_input_ver_update
+		gosub *comp_chk_NakedPair	:	gosub *comp_input_ver_update
+
+		gosub *disp_masu
+		n_kakutei = 0 
+		repeat 9
+			a = cnt
+			repeat 9
+				b = cnt
+				repeat 9
+					c = cnt + 1
+					if mitei(a,b,c) == 0 {
+						n_kakutei ++
+					}
+				loop
+			loop
+		loop
+		if n_kakutei == n_kakutei_past {
+			if n_kakutei == 81 * 9 {
+				log += "解析が終了しました。\n\n" : gosub *log_update
+			}
+			else {
+				log += "error!\n@*comp\n思考限界に到達しました。\n開発者にメッセージを送ってください。\n\n" : gosub *log_update
+				situ_now = "error"
+				dialog "思考限界に到達しました。\nログを作成してもよろしいですか？\n(ログは作成されても自動送信などは行いません。)",2,ver
+				if stat == 6{
+					gosub *make_masu_log
+					dialog "ご協力ありがとうございます。\n品質向上のため、ログを開発者に送っていただければ光栄です。",0,ver
+				}
+				situ_now = "clear"
+			}
+			break
+		}
+		n_kakutei_past = n_kakutei
+	loop
+	return
+;数独解析ルーチン(大格子の可能性を消していく)	
+*comp_chk_koushi
+	repeat 3
+		a = cnt
+		repeat 3
+			b = cnt
+			repeat 3
+				c = cnt
+				repeat 3
+					d = cnt
+					if kakutei(a * 3 + c, b * 3 + d) != 0 {
+						repeat 3
+							e = cnt
+							repeat 3
+								f = cnt
+								mitei(a * 3 + e, b * 3 + f,kakutei(a * 3 + c, b * 3 + d)) =0
+							loop
+						loop
+					}
+				loop
+			loop
+			repeat 3
+				c = cnt
+				repeat 3
+					d = cnt
+					i = 0
+					repeat 9
+						e = cnt + 1
+						if mitei(a * 3 + c, b * 3 + d, e) == 1 {
+							f = a * 3 + c : g =  b * 3 + d : h = e
+							i ++
+						}
+					loop
+					if i == 1 {
+						kakutei(f,g) = h
+					}
+				loop
+			loop
+			;大格子に一つしか候補がないときにそのマスに数字に決定する
+			repeat 9
+				c = cnt + 1
+				i = 0
+				repeat 3
+					d = cnt
+					repeat 3
+						e = cnt
+						if mitei(a * 3 + d, b * 3 + e, c) == 1 {
+							f = a * 3 + d : g =  b * 3 + e : h = c
+							i ++
+						}
+					loop
+				loop
+				if i == 1 {
+					kakutei(f,g) = h
+				}
+			loop
+			;マスのある行、列にしか数字がないときは、その行、列にその数字の可能性はないので、そのように情報を更新する
+			;単独候補数字
+			repeat 9
+				e = cnt + 1
+				f = 0
+				repeat 3
+					c = cnt
+					repeat 3
+						d = cnt
+						if mitei(a * 3 + c,b * 3 + d,e) == 1 {
+							f ++
+						}
+					loop
+				loop
+				
+				//2つの時
+				if (f == 2){
+					dim ab,4
+					h = 0
+					repeat 3
+						c = cnt
+						repeat 3
+							d = cnt
+							if mitei(a * 3 + c,b * 3 + d,e) == 1 {
+								ab(h) = a * 3 + c
+								ab(h+1) = b * 3 + d
+								h += 2
+							}
+						loop
+					loop
+					//横でそろっている
+					if ab(0) == ab(2) {
+						repeat 9
+							c = cnt
+							if (b * 3 <= c)&(c < (b + 1) * 3) {
+							}
+							else {
+								mitei(ab(0),c,e) = 0
+							}
+						loop
+					}
+					//縦でそろっている
+					if ab(1) == ab(3) {
+						repeat 9
+							c = cnt
+							if (a * 3 <= c)&(c < (a + 1) * 3) {
+							}
+							else {
+								mitei(c,ab(1),e) = 0
+							}
+						loop
+					}
+				}
+				//3つの時
+				if (f == 3){
+					dim ab,6
+					h = 0
+					repeat 3
+						c = cnt
+						repeat 3
+							d = cnt
+							if mitei(a * 3 + c,b * 3 + d,e) == 1 {
+								ab(h) = a * 3 + c
+								ab(h+1) = b * 3 + d
+								h += 2
+							}
+						loop
+					loop
+					//横でそろっている
+					if (ab(0) == ab(2))&(ab(0) == ab(4)) {
+						repeat 9
+							c = cnt
+							if (b * 3 <= c)&(c < (b + 1) * 3) {
+							}
+							else {
+								mitei(ab(0),c,e) = 0
+							}
+						loop
+					}
+					//縦でそろっている
+					if (ab(1) == ab(3))&(ab(1) == ab(5)) {
+						repeat 9
+							c = cnt
+							if (a * 3 <= c)&(c < (a + 1) * 3) {
+							}
+							else {
+								mitei(c,ab(1),e) = 0
+							}
+						loop
+					}
+				}
+			loop
+		loop
+	loop
+return
+;;数独解析ルーチン(縦の可能性を消していく)
+*comp_chk_tate
+	repeat 9
+		a = cnt
+		repeat 9
+			b = cnt
+			if kakutei(b,a) != 0 {
+				repeat 9
+					c = cnt
+					mitei(c,a,kakutei(b,a)) = 0
+				loop
+			}
+		loop
+		repeat 9
+			b = cnt
+			g = 0
+			repeat 9
+				c = cnt + 1 
+				if (mitei(b,a,c)) == 1 {
+					d = b : e = a : f = c
+					g ++
+				}
+			loop
+			if g == 1 {
+				kakutei(d,e) = f
+			}
+		loop
+	loop
+return
+;数独解析ルーチン(横の可能性を消していく)
+*comp_chk_yoko
+	repeat 9
+		a = cnt
+		repeat 9
+			b = cnt
+			if kakutei(a,b) != 0 {
+				repeat 9
+					c = cnt
+					mitei(a,c,kakutei(a,b)) = 0
+				loop
+			}
+		loop
+		repeat 9
+			b = cnt
+			g = 0
+			repeat 9
+				c = cnt + 1 
+				if (mitei(a,b,c)) == 1 {
+					d = a : e = b : f = c
+					g ++
+				}
+			loop
+			if g == 1 {
+				kakutei(d,e) = f
+			}
+		loop
+	loop
+return
+
+;数独解析ルーチン-NakedPair(n国同盟 n=2)
+*comp_chk_NakedPair
+	repeat 9
+		a = cnt
+		c = 0
+		;++++++++++++++++++++++++++++++
+		;           縦の列
+		;++++++++++++++++++++++++++++++
+		repeat 9
+			b = cnt
+			if kakutei(a,b) == 0{
+				c ++
+			}
+		loop
+		;縦の列で開いている(確定していない)マスが2つ以上ある時にのみ、この操作を実行する
+		if c >= 2 {
+			repeat 9
+				b = cnt
+				c = 0 
+				;確定指定ないマスのみ以下の操作を実行する
+				if kakutei(a,b) == 0 {
+					repeat 9
+						if mitei(a,b,cnt+1) == 1 {
+							c ++
+						}
+					loop
+					;確定していないマスの候補がちょうど2つの時のみ以下の操作を実行する
+					if c == 2 {
+						repeat 9 - (b + 1)
+							c = cnt + (b + 1)
+							e = 1
+							repeat 9
+								d = cnt + 1
+								if mitei(a,b,d) == mitei(a,c,d) {
+									e = 1
+								}
+								else {
+									e = 0
+									break
+								}
+							loop
+							if e = 1 {
+								repeat 9
+									e = cnt
+									if kakutei(a,e) == 0 {
+										if (e ! b) & (e ! c) {
+											repeat 9
+												f = cnt + 1
+												if mitei(a,b,f) == 1 {
+													mitei(a,e,f) = 0
+												}
+											loop
+										}
+									}
+								loop
+								;もしその2マスが同じ大格子の中にある場合は以下の操作を実行する
+								if int(b/3) == int (c/3){
+									repeat 3
+										d = cnt + int(a/3)*3
+										repeat 3
+											e = cnt + int(b/3)*3
+											if (d ! a) {
+												repeat 9
+													f = cnt + 1
+													if mitei(a,b,f) == 1 {
+														mitei(d,e,f) = 0
+													}
+												loop
+											}
+											else {
+												if (e ! b) & (e ! c) {
+													repeat 9
+														f = cnt + 1
+														if mitei(a,b,f) == 1 {
+															mitei(d,e,f) = 0
+														}
+													loop
+												}
+											}
+										loop
+									loop
+								}
+							}
+						loop
+					}
+				}
+			loop
+		}
+
+		c = 0
+		;++++++++++++++++++++++++++++++
+		;           横の列
+		;++++++++++++++++++++++++++++++
+		repeat 9
+			b = cnt
+			if kakutei(b,a) == 0{
+				c ++
+			}
+		loop
+		;縦の列で開いている(確定していない)マスが2つ以上ある時にのみ、この操作を実行する
+		if c >= 2 {
+			repeat 9
+				b = cnt
+				c = 0 
+				;確定指定ないマスのみ以下の操作を実行する
+				if kakutei(b,a) == 0 {
+					repeat 9
+						if mitei(b,a,cnt+1) == 1 {
+							c ++
+						}
+					loop
+					;確定していないマスの候補がちょうど2つの時のみ以下の操作を実行する
+					if c == 2 {
+						repeat 9 - (b + 1)
+							c = cnt + (b + 1)
+							e = 1
+							repeat 9
+								d = cnt + 1
+								if mitei(b,a,d) == mitei(c,a,d) {
+									e = 1
+								}
+								else {
+									e = 0
+									break
+								}
+							loop
+							if e = 1 {
+								repeat 9
+									e = cnt
+									if kakutei(e,a) == 0 {
+										if (e ! b) & (e ! c) {
+											repeat 9
+												f = cnt + 1
+												if mitei(b,a,f) == 1 {
+													mitei(e,a,f) = 0
+												}
+											loop
+										}
+									}
+								loop
+								;もしその2マスが同じ大格子の中にある場合は以下の操作を実行する
+								if int(b/3) == int (c/3){
+									repeat 3
+										d = cnt + int(b/3)*3
+										repeat 3
+											e = cnt + int(a/3)*3
+											if (d ! a) {
+												repeat 9
+													f = cnt + 1
+													if mitei(b,a,f) == 1 {
+														mitei(d,e,f) = 0
+													}
+												loop
+											}
+											else {
+												if (e ! b) & (e ! c) {
+													repeat 9
+														f = cnt + 1
+														if mitei(b,a,f) == 1 {
+															mitei(d,e,f) = 0
+														}
+													loop
+												}
+											}
+										loop
+									loop
+								}
+							}
+						loop
+					}
+				}
+			loop
+		}
+	loop	
+return
+
+;数独のルールに従わない数が入力されていないかをチェック
+*comp_chk_err
+;++++++++++++++++++++++++++++++++++++++++
+	err_flg = ""
+	chk_flg = "*comp_chk_err_縦"
+	repeat 9
+		a = cnt
+		dim err_chk_masu,10
+		repeat 9
+			b = cnt
+			err_chk_masu(kakutei(b,a)) ++
+		loop
+		repeat 9
+			if (err_chk_masu(cnt + 1)) >= 2 {
+				err_flg += "Error!\n@" + chk_flg + "\n" + str(a + 1) + "の縦の列で" + str(cnt + 1) + "が重複しています。\n\n"
+				color 255,150,150
+				boxf a * masu_size + pos_koushi_x + posi_masu_x, 0 * masu_size + pos_koushi_y + posi_masu_y, (a + 1) * masu_size - 4 + pos_koushi_x + posi_masu_x, (9) * masu_size - 4 +pos_koushi_y + posi_masu_y
+			}
+		loop
+	loop
+;++++++++++++++++++++++++++++++++++++++++
+	chk_flg = "*comp_chk_err_横"
+	repeat 9
+		a = cnt
+		dim err_chk_masu,10
+		repeat 9
+			b = cnt
+			err_chk_masu(kakutei(a,b)) ++
+		loop
+		repeat 9
+			if (err_chk_masu(cnt + 1)) >= 2 {
+				err_flg += "Error!\n@" + chk_flg + "\n" + str(a + 1) + "の横の行で" + str(cnt + 1) + "が重複しています。\n\n"
+				color 255,150,150
+				boxf 0 * masu_size + pos_koushi_x + posi_masu_x, a * masu_size + pos_koushi_y + posi_masu_y, 9 * masu_size - 4 + pos_koushi_x + posi_masu_x, (a + 1) * masu_size - 4 +pos_koushi_y + posi_masu_y
+			}
+		loop
+	loop
+;++++++++++++++++++++++++++++++++++++++++
+	chk_flg = "*comp_chk_err_大格子"
+	repeat 3
+		a = cnt
+		repeat 3
+			b = cnt
+			dim err_chk_masu,10
+			repeat 3
+				c = cnt
+				repeat 3
+					d = cnt
+					err_chk_masu(kakutei(a * 3 + c,b * 3 + d)) ++
+				loop
+			loop
+			repeat 9
+			if (err_chk_masu(cnt + 1)) >= 2 {
+				err_flg += "Error!\n@" + chk_flg + "\n(" + str(a + 1) + "," + str(b + 1) + ")の大格子で" + str(cnt + 1) + "が重複しています。\n\n"
+				color 255,150,150
+				boxf (a * 3) * masu_size + pos_koushi_x + posi_masu_x, (b * 3)* masu_size + pos_koushi_y + posi_masu_y, ((a + 1) * 3) * masu_size - 4 + pos_koushi_x + posi_masu_x, ((b + 1) * 3) * masu_size - 4 +pos_koushi_y + posi_masu_y
+			}
+			loop
+		loop
+	loop
+return
+;変数mitei(x,y,n)の情報を更新
+*comp_input_ver_update
+	repeat 9
+		a = cnt
+		repeat 9
+			b = cnt
+			if kakutei(a,b) != 0 {
+				repeat 9
+					c = cnt + 1
+					mitei(a,b,c) = 0
+				loop
+			}
+		loop
+	loop
+return
+;変数kakuteiから、解析に必要な変数に数を代入する
+;変数mitei(x,y,n)…nが入る可能性がある場合は1、ない場合は0
+;				　便宜上n = 0の配列は冗長(使っていない)
+*comp_input_ver
+	repeat 9
+		a = cnt
+		repeat 9
+			b = cnt
+			if kakutei(a,b) == 0 {
+				repeat 9
+					c = cnt + 1
+					mitei(a,b,c) = 1
+				loop
+			}
+			else {
+				repeat 9
+					c = cnt + 1
+					mitei(a,b,c) = 0
+				loop
+			}
+		loop
+	loop
+return
+;現在の格子の状態の描写
+*disp_masu
+	pos posi_masu_x, posi_masu_y
+	color 255,255,255 : gmode 4,,,256
+	gcopy 20,0,0,masu_size * 9 + pos_koushi_x*2 - 2,masu_size * 9 + pos_koushi_y*2 - 2
+	font "MSｺﾞｼｯｸ",60 : color 0,0,0
+	repeat 9
+		a = cnt
+		repeat 9
+			b = cnt
+			pos posi_masu_x + b * masu_size + 17, posi_masu_y + a * masu_size + 1
+			if kakutei(a,b) != 0 {
+				mes kakutei(a,b)
+			}
+		loop
+	loop
+return
+;格子の描写
+*first_koushi_disp
+	pos_koushi_x = 10 : pos_koushi_y = 10
+	masu_size = 50
+	buffer 20,masu_size * 9 + pos_koushi_x*2 ,masu_size * 9 + pos_koushi_y*2 
+		color 0,0,0 : boxf 0,0,masu_size * 9 + pos_koushi_x*2 ,masu_size * 9 + pos_koushi_y*2 
+		color 180,180,180 : boxf pos_koushi_x, pos_koushi_y,masu_size * 9 + pos_koushi_x /2 + 1,masu_size * 9 + pos_koushi_y/2 + 1
+		repeat 2
+			color 0,0,0
+			boxf (cnt + 1) * masu_size * 3 + pos_koushi_x - 3,pos_koushi_y,(cnt + 1) * masu_size * 3 + pos_koushi_x - 1,masu_size * 9 + pos_koushi_y 
+		loop
+		repeat 2
+			color 0,0,0
+			boxf pos_koushi_x,(cnt + 1) * masu_size * 3 + pos_koushi_y - 3,masu_size * 9 + pos_koushi_x ,(cnt + 1) * masu_size * 3 + pos_koushi_y - 1
+		loop
+		color 255,255,255
+		repeat 9
+			a = cnt
+			repeat 9
+				b = cnt
+				boxf b * masu_size + pos_koushi_x, a * masu_size + pos_koushi_y, (b + 1) * masu_size - 4 + pos_koushi_x, (a + 1) * masu_size - 4 +pos_koushi_y
+			loop
+		loop
+	gsel 0
+return
+;矢印キーによる升目の移動のルーチン
+*masu_move
+	a = 0: b = 0: c = 0: d = 0: e = 0
+	getkey a,37
+	if a = 1 {
+		b -= 1
+	}
+	getkey a,38
+	if a = 1 {
+		c -= 1
+	}
+	getkey a,39
+	if a = 1 {
+		b += 1
+	}
+	getkey a,40
+	if a = 1 {
+		c += 1
+	}
+	if (int((masu.key - 1)/9) * 9 = masu.key - 1) & (b == -1) {
+		masu.key = masu.key + 8									//現在アクティブなマスが左端にあって、左に移動するときの処理
+		e = 1
+	}
+	if (int(masu.key / 9) * 9 = masu.key) & (b == 1) {
+		masu.key = masu.key - 8									//現在アクティブなマスが右端にあって、右に移動するときの処理
+		e = 1
+	}
+	if (masu.key <= 9) & (c == -1) {
+		masu.key = masu.key + 9 * 8								//現在アクティブなマスが上端にあって、上に移動するときの処理
+		e = 1
+	}
+	if (72 <= masu.key) & (c == 1) {
+		masu.key = masu.key - 9 * 8								//現在アクティブなマスが下端にあって、下に移動するときの処理
+		e = 1
+	}
+	if e == 0 {
+		masu.key += b
+		masu.key += c * 9
+	}
+	a = 0: b = 0: c = 0: d = 0: e = 0
+return
+;問題ファイルを読み込む
+*file_load
+	sdim note,1200
+	sdim mondai,1000
+	sdim line_note,100
+	sdim masu_log,3000
+	notesel note
+
+	dialog "txt",16,"テキストファイル"
+
+	if stat {
+		mondai = refstr
+		noteload mondai
+		log += "問題データ:\n" + mondai + "\nを読み込みました\n\n" : gosub *log_update
+		gosub *comp_input_ver
+		repeat 9
+			noteget line_note,cnt
+			a = cnt
+			repeat 9
+				kakutei(a, cnt) = int(strmid(line_note,cnt,1))
+			loop
+		loop
+		masu_log  = "問題データ:" + mondai + "\n"
+		masu_log += note + "\n\n"
+	}
+	else {
+		return
+	}
+	color 255,255,255 : boxf : gosub *disp_masu
+	gosub *comp_input_ver
+return
+;mesboxの更新
+*log_update
+	objprm 0,log
+return
+;開発者報告の思考限界ログ作成
+*make_masu_log
+	masu_log += "マスの状態は以下の通りです。\n\n"
+	repeat 9
+		a = cnt
+		repeat 9
+			b = cnt
+			masu_log += str(kakutei(a,b)) + "{"
+			repeat 9
+				c = cnt + 1
+				masu_log += str(mitei(a,b,c))
+			loop
+			masu_log += "}"
+		loop
+		masu_log += "\n"
+	loop
+	masu_log += "\n"
+	repeat 9
+		a = cnt
+		repeat 9
+			b = cnt
+			masu_log += str(kakutei(a,b))
+		loop
+		masu_log += "\n"
+	loop
+	notesel masu_log
+	switch situ_now
+		case "error"
+			masu_log_name = fir_dir + "\\エラー報告書・ログ\\思考限界" + str(gettime(0)) + str(gettime(1)) + str(gettime(3)) + str(gettime(4)) + str(gettime(5)) + str(gettime(6)) + str(gettime(7)) + ".txt"
+			swbreak
+		case "clear"
+			masu_log_name = fir_dir + "\\エラー報告書・ログ\\ログ" + str(gettime(0)) + str(gettime(1)) + str(gettime(3)) + str(gettime(4)) + str(gettime(5)) + str(gettime(6)) + str(gettime(7)) + ".txt"
+			swbreak
+		default
+			swbreak
+	swend
+	notesave masu_log_name
+	dialog "以下に保存しました。\n" + masu_log_name,0,ver
+return
+
+*owari
+	end
