@@ -1,0 +1,527 @@
+	ver   = "テニスゲーム v2.0"
+	veri  = ver
+	veri += "\n"
+	veri += "\n"
+	veri += "\n"
+
+	fx = 300 : fy = 180 : obx = 150
+	onexit *owari
+screen 0,fx + obx,fy,,(ginfo_dispx - fx) / 2,(ginfo_dispy - fy) / 2 : title ver
+
+;変数定義
+	pl = 50 : pf = 10 : ps = 3
+	pr = 100 : pg = 200 : pb = 200
+	px = 0 : py = (fy - pl) / 2
+
+	el = 30 : ef = 10 : es = 1
+	er = 200 : eg = 100 : eb = 100
+	ex = fx - ef : ey = (fy - el) / 2
+
+	bh = 10 : bw = 10 : fbs = 4 : bs = fbs
+	at = 4  : att = 0 ;あたり判定エラー防止用変数
+	dim bx,at : dim by,at
+	dim vx,at : dim vy,at
+	con = 0 
+	repeat at
+		vx(cnt) = 1 : vy(cnt) = 1
+		bx(cnt) = (fx - bw) / 2 : by(cnt) = (fy - bh) / 2
+	loop
+	scop = 0 : scoe = 0
+	u = 0 : d = 0 : r = 0 : l = 0
+
+	pire = 0 : eire = 0
+	pirc = 0 : eirc = 0 : ires = 0
+	ud = 80 : mg = 2
+	
+	meb =  "ただいまのスコア"
+	meb += "\n(Player) - (COM)"
+	meb += "\n" + str(scop) + " - " + str(scoe)
+	meb += "\nプレーヤの長さ = " + str(pl)
+	meb += "\nCOMの長さ    = " + str(el)
+	meb += "\nプレーヤの速さ = " + str(ps)
+	meb += "\nCOMの速さ    = " + str(es)	
+	oby = 90 : pos fx,0 : mesbox meb,obx,oby,0
+	font "ＭＳ ゴシック",14,16
+	pos fx+4,oby + 24 : mes "変化球説明"
+	font "ＭＳ ゴシック",10,16
+	mes "Ｗキー…超高速"
+	mes "スペースキー…マグネット"
+	mes "Ｑキー…シュート"
+	mes "Ｅキー…カーブ"
+	dialog "プレイの邪魔にならないように、マウスカーソルを移動します。",0,ver
+	mouse ginfo_wx2 , ginfo_wy1
+;メインルーティン
+	repeat: redraw 0
+		wait 1
+		color 255,255,255 : boxf 0,0,fx,fy
+		gosub *move_p
+		gosub *move_e
+		gosub *move_b
+		gosub *jdg
+		gosub *draw	
+		bs += rnd(1)
+	redraw 1 : loop
+
+*move_p
+	getkey p_l,37
+	getkey p_u,38
+	getkey p_r,39
+	getkey p_d,40
+	px += (p_r - p_l) * ps
+	py += (p_d - p_u) * ps
+	if px < 0 : px = 0
+	if py < 0 : py = 0
+	if px > fx / 2 - pf : px = fx / 2 - pf 
+	if py > fy - pl : py = fy - pl
+return
+
+*move_e
+	e_r = 0 : e_l = 0
+	boxy = by : gosub *u_or_d
+;AI
+	if vy(at - 1) = 1 { ;ボールが下へ向かっているとき
+		boxx = (ex - bx - bw) - (fy - by) : boxy = fy
+		;boxx = ボールとCOMのX距離 - 一回目のバウンドまでにボールが進む距離
+		if boxx > 0 { ;int(a/2)とa/2が同じ値になるために奇数・偶数判定は少々複雑になった
+			repeat 
+				if boxx - fy < 0 {
+					bcnt = 0 
+					break
+				}
+				else {
+					boxx -= fy
+				}
+	
+				if boxx - fy < 0 {
+					bcnt = 1 
+					break
+				}
+				else {
+					boxx -= fy
+				}
+			loop
+			
+			if bcnt = 1 {
+				boxy = boxx
+				gosub *u_or_d
+			}
+			else {
+				boxy = fy - boxx
+				gosub *u_or_d
+			}
+		}
+		else {
+			boxy = by + (ex - bx - bw)
+			gosub *u_or_d
+		}
+	}
+	else { ;ボールが上に向かっているとき
+		boxx = (ex - bx - bw - bh) - by
+		;boxx = ボールとCOMのX距離 - 一回目のバウンドまでにボールが進む距離
+		if boxx > 0 {
+			repeat 
+				if boxx - fy < 0 {
+					bcnt = 0
+					break
+				}
+				else {
+					boxx -= fy
+				}
+
+				if boxx - fy < 0 {
+					bcnt = 1 
+					break
+				}
+				else {
+					boxx -= fy
+				}
+			loop
+			if bcnt = 1 {
+				boxy = fy - boxx
+				gosub *u_or_d
+			}
+			else {
+				boxy = boxx
+				gosub *u_or_d
+			}
+		}
+		else {
+			boxy = by - (ex - bx - bw)
+			gosub *u_or_d
+		}
+	}
+	
+	if vx(0) = -1 {
+			boxy = (fy - el) / 2
+			gosub *u_or_d
+		}
+
+;COMの移動ルーティン	
+	ex += (e_r - e_l) * es
+	ey += (e_d - e_u) * es
+	if ex < 0 : ex = 0
+	if ey < 0 : ey = 0
+	if ex < fx / 2 - ef : ex = fx / 2 - ef 
+	if ey > fy - el : ey = fy - el
+return
+
+*u_or_d
+	if boxy > ey + el / 2 : e_d = 1 : e_u = 0
+	if boxy < ey + el / 2 : e_u = 1 : e_d = 0
+	if boxy = ey + el / 2 : e_u = 0 : e_d = 0
+return
+
+*ch_irr_p
+	pire = 0 : pirc = 0
+	eire = 0 : eirc = 0
+	bs = fbs
+	if vx(0) = 1 {
+		getkey boxx,81
+		if boxx = 1 {
+			pire = 2
+		}
+		getkey boxx,69
+		if boxx = 1 {
+			pire = 3
+		}
+		getkey boxx,87
+		if boxx = 1 {
+			pire = 4
+		}
+	}
+	if ires = 1 : eire = 1 : eirc = 0
+return
+
+*ch_irr_e
+	pire = 0 : pirc = 0
+	eire = 0 : eirc = 0
+	bs = fbs
+;変化球思考ルーティン
+;	1 = スピードアップ
+;	2 = シュート
+;	3 = カーブ
+	if ires = 1 {
+		eire = 4
+		if px + pf > fx / 2 - 50 {
+			if by + bh / 2 < fy / 2 : if py + pl / 2 > fy / 2 : eire = 2
+			if by + bh / 2 > fy / 2 : if py + pl / 2 < fy / 2 : eire = 3
+			if (fy / 2 - 10 < by + bw/2) & (by + bw/2 < fy / 2 + 10) : eire = 4
+		}
+		if px +pf > fx / 2 -10 {
+			eire = 4
+		}
+	}
+	
+	getkey boxx,32
+	if boxx = 1 {
+		pire = 1
+	}
+return
+
+*move_b
+	randomize
+	bx(0) = bx(at - 1) + bs * vx(0)
+	by(0) = by(at - 1) + bs * vy(0) + rnd (2)
+;----------------------------------
+;            変化球
+	color 255,255,255 : boxf fx,oby,fx + obx,oby + 20
+		if pire = 1 {
+			pirc ++
+			if pirc < 30 {
+				pos fx,oby : color 0,0,255 : font "ＭＳ ゴシック",10,16
+				mes "マグネット！"
+				if by(0) > py + pl / 2 : by(0) -= mg
+				if by(0) < py + pl / 2 : by(0) += mg
+			}
+			else {
+				bs = fbs
+			}
+		}
+		if pire = 2 {
+			pirc ++ : bs = fbs + 1
+			if pirc < 30 {
+				pos fx,oby : color 0,0,255 : font "ＭＳ ゴシック",10,16
+				mes "シュート！"
+				bx(0) = bx(at - 1) + fbs * vx(0)
+				by(0) -= (pirc) * (pirc) / ud
+				bs = 0 : vy(0) = -1
+			}
+			else {
+				bs = fbs
+			}
+		}
+		if pire = 3 {
+			pirc ++ : bs = fbs + 1
+			if pirc < 30 {
+				pos fx,oby : color 0,0,255 : font "ＭＳ ゴシック",10,16
+				mes "カーブ！"
+				bx(0) = bx(at - 1) + fbs * vx(0)
+				by(0) += (pirc) * (pirc) / ud
+				bs = 0 : vy(0) = 1
+			}
+			else {
+				bs = fbs
+			}
+		}
+		if pire = 4 {
+			pirc ++ 
+			if pirc < 30 {
+				pos fx,oby : color 0,0,255 : font "ＭＳ ゴシック",10,16
+				mes "超高速!!"
+				bx(0) += 4
+			}
+			else {
+				bs = fbs
+			}
+		}
+
+		if eire = 1 {
+			eirc ++
+			if eirc < 50 {
+				pos fx,oby + 10 : color 255,0,0 : font "ＭＳ ゴシック",10,16
+				mes "マグネット！"
+				if by(0) > ey + el / 2 : by(0) -= mg
+				if by(0) < ey + el / 2 : by(0) += mg
+			}
+			else {
+				bs = fbs : eric = 0
+			}
+		}
+		if eire = 2 {
+			eirc ++ : bs = fbs + 1
+			if eirc < 30 {
+				pos fx,oby + 10 : color 255,0,0 : font "ＭＳ ゴシック",10,16
+				mes "シュート！"
+				bx(0) = bx(at - 1) + fbs * vx(0)
+				by(0) -= (pirc) * (pirc) / ud
+				bs = 0 : vy(0) = -1
+			}
+			else {
+				bs = fbs
+			}
+		}
+		if eire = 3 {
+			eirc ++ : bs = fbs + 1
+			if eirc < 30 {
+				pos fx,oby + 10 : color 255,0,0 : font "ＭＳ ゴシック",10,16
+				mes "カーブ！"
+				bx(0) = bx(at - 1) + fbs * vx(0)
+				by(0) += (pirc) * (pirc) / ud
+				bs = 0 : vy(0) = 1
+			}
+			else {
+				bs = fbs
+			}
+		}
+		if eire = 4 {
+			eirc ++ 
+			if eirc < 30 {
+				pos fx,oby + 10 : color 255,0,0 : font "ＭＳ ゴシック",10,16
+				mes "超高速!!"
+				bx(0) -= 4
+			}
+			else {
+				bs = fbs
+			}
+		}
+	
+	if by(0) < bs : by(0) = bs : vy(0) = 1
+	if by(0) > fy - bh - bs : by(0) = fy - bh - bs: vy(0) = -1
+	
+	;あたり判定
+	;　ボールの１ループ前と現在、の座標から一時方程式を求めて、
+	;プレーヤと敵のバーをその式で求められる直線がとおるかどうかで、
+	;あたり判定を行う。傾きは１であり、それを求める式は不必要でありそうだが
+	;Y変化量に乱数を使用しており、且つ将来的に変化球などを追加する予定であり
+	;柔軟に対応できるようにするために残しておく。
+	;　なお、変化量に変化がある、例えば放物線的な変化の仕方であれば、
+	;一次近似のみでは不充分であり、時が至ればあたり判定ルーティンの改良をする
+	;　なお、前の例の場合は変化量は単調増加なのでプレーヤに不利な判定は出にくい。
+	;問題はサインカーブなど変化量が単調減少しうる変化の場合である。
+	if abs(px + pf - bx) < bs * 4 { 
+		if vy(0) ! vy(at - 1) {
+			con = 0 : repeat at
+				if vy(0) = vy (at - con - 1) : break
+				con ++
+			loop
+			switch at - con - 1
+			case 0
+					if vy(0) = 1 {
+						boxy = ( by(0) - 0 ) / ( bx(0) - 0 ) * (px + pf - bx(0) ) + by(0)
+					}
+					if vy(0) = -1 {
+						boxy = ( by(0) - fy ) / ( bx(0) - 0 ) * (px + pf - bx(0) ) + by(0)
+					}
+				swbreak
+			case 1
+					if vy(0) = 1 {
+						boxy = ( by(0) - 0 ) / ( ( bx(0) - bx(1) ) * ( by(0) / ( by(0) + by(1) ) ) ) * (px + pf - bx(0) ) + by(0)
+					}
+					if vy(0) = -1 {
+						boxy = ( by(0) - fy ) / ( ( bx(0) - bx(1) ) * ( by(0) / ( by(0) + by(1) ) ) ) * (px + pf - bx(0) ) + by(0)
+					}
+					else
+				swbreak
+			default
+				boxy = ( by(0) - by(at - con - 1) ) / ( bx(0) - bx(at - con - 1) ) * (px + pf - bx(0) ) + by(0)
+			swend		
+		}
+		else {
+			if bx(0) - bx(at - 1) = 0 : bx(0) = bx(at - 1) + 1
+			boxy = ( by(0) - by(at - 1) ) / ( bx(0) - bx(at - 1) ) * (px + pf - bx(0) ) + by(0)
+		}
+		if boxy > fy : boxy = fy : if boxy < 0 : boxy = 0
+		if (py - att < boxy) & (boxy < py + pl + att) : vx(0) = 1 : gosub *ch_irr_p
+		if by(0) < pl / 2 {
+			if py < pl / 2 {
+				vx(0) = 1
+				gosub *ch_irr_p
+			}
+		}
+		if by(0) > fy - pl / 2 {
+			if py < fy - pl / 2 {
+				vx(0) = 1
+				gosub *ch_irr_p
+			}
+		}
+	}
+	
+	if abs(ex - bx - bw) < bs * 4 {
+		if vy(0) ! vy(at - 1) {
+			con = 0 : repeat at
+				if vy(0) = vy (at - con - 1) : break
+				con ++
+			loop
+			switch at - con - 1
+			case 0
+					if vy(0) = 1 {
+						boxy = ( by(0) - 0 ) / ( bx(0) - 0 ) * (ex + ef - bx(0) ) + by(0)
+					}
+					if vy(0) = -1 {
+						boxy = ( by(0) - fy ) / ( bx(0) - 0 ) * (ex + ef - bx(0) ) + by(0)
+					}
+				swbreak
+			case 1
+					if vy(0) = 1 {
+						boxy = ( by(0) - 0 ) / ( ( bx(0) - bx(1) ) * ( by(0) / ( by(0) + by(1) ) ) ) * (ex + ef - bx(0) ) + by(0)
+					}
+					if vy(0) = -1 {
+						boxy = ( by(0) - fy ) / ( ( bx(0) - bx(1) ) * ( by(0) / ( by(0) + by(1) ) ) ) * (ex + ef - bx(0) ) + by(0)
+					}
+					else
+				swbreak
+			default
+				boxy = ( by(0) - by(at - con - 1) ) / ( bx(0) - bx(at - con - 1) ) * (ex + ef - bx(0) ) + by(0)
+			swend
+		}
+		else {
+			if bx(0) - bx(at - 1) = 0 : bx(0) = bx(at - 1) + 1
+			boxy = ( by(0) - by(at - 1) ) / ( bx(0) - bx(at - 1) ) * (ex - bx(0) ) + by(0)
+		}
+		if boxy > fy : boxy = fy : if boxy < 0 : boxy = 0
+		if (ey - att) & (boxy < ey + el + att) : vx(0) = -1 : gosub *ch_irr_e
+		if by(0) < el / 2 {
+			if ey < el / 2 {
+				vx(0) = -1
+				gosub *ch_irr_e
+			}
+		}
+		if by(0) > fy - el / 2 {
+			if ey < fy - el / 2 {
+				vx(0) = -1
+				gosub *ch_irr_e
+			}
+		}
+	}
+	
+	con = 0 : repeat at - 1
+		bx(con + 1) = bx(con) : by(con + 1) = by(con)
+		vx(con + 1) = vx(con) : vy(con + 1) = vy(con)
+		con ++
+	loop
+return
+
+*jdg
+	if bx(at - 1) < 0 {
+		color 255,255,255 : boxf 0,0,fx + obx,fy
+		redraw 1
+		pos (fx - 20 * 8) / 2 , (fy - 30) / 2 : color 0,0,0
+		font "ＭＳ ゴシック",20,1+16 : mes "あなたの負けです" 
+		bx(at - 1) = (fx - bw) / 2 : by(at - 1) = (fy - bh) / 2
+		vx(at - 1) = 1 : vy(at - 1) = 1
+		px = 0 : py = (fy - pl) / 2
+		ex = fx - ef : ey = (fy - el) / 2
+		pire = 0 : pirc = 0 : bs = fbs
+		eire = 0 : eirc = 0
+		con = 0 
+		repeat at
+			vx(cnt) = 1 : vy(cnt) = 1
+			bx(cnt) = (fx - bw) / 2 : by(cnt) = (fy - bh) / 2
+		loop	
+		scoe ++
+		meb =  "ただいまのスコア"
+		meb += "\n(Player) - (COM)"
+		meb += "\n" + str(scop) + " - " + str(scoe)
+		meb += "\nプレーヤの長さ = " + str(pl)
+		meb += "\nCOMの長さ    = " + str(el)
+		meb += "\nプレーヤの速さ = " + str(ps)
+		meb += "\nCOMの速さ    = " + str(es)	
+		objprm 0,meb
+		font "ＭＳ ゴシック",14,16
+		pos fx+4,oby + 24 : mes "変化球説明"
+		font "ＭＳ ゴシック",10,16
+		mes "Ｗキー…超高速"
+		mes "スペースキー…マグネット"
+		mes "Ｑキー…シュート"
+		mes "Ｅキー…カーブ"
+		
+		wait 100
+	}
+	if bx(at - 1) + bw > fx {
+		color 255,255,255 : boxf 0,0,fx + obx,fy
+		redraw 1
+		pos (fx - 20 * 8) / 2 , (fy - 30) / 2 : color 0,0,0
+		font "ＭＳ ゴシック",20,1+16 : mes "あなたの勝ちです" 
+		bx(at - 1) = (fx - bw) / 2 : by(at - 1) = (fy - bh) / 2
+		vx(at - 1) = 1 : vy(at - 1) = 1
+		px = 0 : py = (fy - pl) / 2
+		ex = fx - ef : ey = (fy - el) / 2
+		pire = 0 : pirc = 0 : bs = fbs
+		eire = 0 : eirc = 0
+		con = 0 
+		repeat at
+			vx(cnt) = 1 : vy(cnt) = 1
+			bx(cnt) = (fx - bw) / 2 : by(cnt) = (fy - bh) / 2
+		loop
+		scop ++
+		meb =  "ただいまのスコア"
+		meb += "\n(Player) - (COM)"
+		meb += "\n" + str(scop) + " - " + str(scoe)
+		meb += "\nプレーヤの長さ = " + str(pl)
+		meb += "\nCOMの長さ    = " + str(el)
+		meb += "\nプレーヤの速さ = " + str(ps)
+		meb += "\nCOMの速さ    = " + str(es)	
+		objprm 0,meb
+		font "ＭＳ ゴシック",14,16
+		pos fx+4,oby + 24 : mes "変化球説明"
+		font "ＭＳ ゴシック",10,16
+		mes "Ｗキー…超高速"
+		mes "スペースキー…マグネット"
+		mes "Ｑキー…シュート"
+		mes "Ｅキー…カーブ"
+			if scop = 3  : dialog "COM、長さアップ",1,ver : el = pl
+			if scop = 5  : dialog "COM、スピードアップ",1,ver : es ++
+			if scop = 8  : dialog "COM、スピードアップ",1,ver : es ++
+			if scop = 10 : dialog "COM,変化球使用",1,ver : ires = 1
+		wait 100
+	}
+
+return	
+		
+*draw
+	color pr,pg,pb : boxf px , py , px + pf , py + pl
+	color er,eg,eb : boxf ex , ey , ex + ef , ey + el
+	color br,bg,bb : boxf bx(at - 1) , by(at - 1) , bx(at - 1) + bw , by(at - 1) + bh
+return
+*owari
+end
