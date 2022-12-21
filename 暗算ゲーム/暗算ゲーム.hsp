@@ -1,0 +1,349 @@
+	cur_exe = dir_cur
+	onexit gosub *owari
+
+#module
+	#uselib "shell32"
+	#func  global SHFileOperation "SHFileOperationA" int
+	#deffunc deletefolder str _dir
+	sdim pFrom, 260
+	pFrom = _dir
+
+	dim SHFILEOPSTRUCT, 8
+	SHFILEOPSTRUCT.0 = hWnd
+	SHFILEOPSTRUCT.1 = 0x0003
+	SHFILEOPSTRUCT.2 = varptr( pFrom )
+	SHFILEOPSTRUCT.3 = 0
+	SHFILEOPSTRUCT.4 = 0x0114
+
+	SHFileOperation varptr( SHFILEOPSTRUCT )
+	return stat
+#global
+	
+	ver = "暗算ゲーム ver1.00"
+	sx = 500 : sy = 300
+	
+	screen 0,sx,sy,,(ginfo_dispx-sx)/2,(ginfo_dispy-sy)/2
+	title ver
+
+	color 0,0,0 : boxf
+
+	color 255,255,255
+		pos (sx-360)/2,(sy-100)/2
+		font "ＭＳ ゴシック",40,1+16 : mes ver
+
+		a = 10 : b = 10
+		repeat
+			wait 5 : redraw 0
+			 	color b,b,b
+			 		pos (sx-180)/2,sy/2+40
+			 		font "ＭＳ ゴシック",14, : mes "Spaceをクリックしてください。"
+			 		b += a
+			 		if b > 245 : a = 0-a
+			 		if b < 10  : a = 0-a
+
+			 	getkey c,32
+			 	if c = 1 :break
+			redraw 1
+		loop
+	redraw 1
+
+;stop ===
+
+*menu_start
+	clrobj 0,-1
+	title ver
+	color 0,0,0 : boxf
+
+	color 255,255,255
+		pos 100,100
+		font "ＭＳ ゴシック",14, : mes "ユーザ名を入力してください。"
+		
+		sdim user_name,20
+		pos 100,130
+		objsize 160,20 : input user_name
+		pos 265,130
+		objsize 80,20 : button "入力完了！",*check_user
+
+stop
+	
+*check_user
+	dim ws, strlen(user_name) / 2
+	cnvstow ws, user_name
+	repeat
+		c = wpeek(ws(cnt/2), (cnt\2) * 2)
+		if c == 0x0000 {
+			i = 1
+			break
+		}
+		if c != 0x0020 && c != 0x3000 {
+			i = 0
+			break
+		}
+	loop
+
+	if i == 1 {
+		dialog "空白のみが検出されました。\n文字列を入力してください。",1,ver
+		user_name = ""
+		objprm 0,user_name
+	}
+	else{
+		exist dir_cur+"/user_file/"+user_name+"/"+user_name+".ini"
+		if strsize = -1 {
+			dialog "ユーザファイルが存在しません。\n\n新規登録しますか？",3,ver
+			if stat = 6 : goto *account_new
+		}
+		else {
+			goto *menu_user
+		}
+	}
+
+stop
+	
+*account_new
+	sdim directory,1200
+	sdim user_entry_time,20
+	sdim user_sti,10
+	sdim user_data,1200
+	sdim html_style,1200
+	sdim user_html,1200
+
+	sdim aaa,100
+	
+	notesel directory
+	noteload dir_cur+"/user_file/directory.ini"
+	n_member = (noteinfo(0)-1)/3+1
+	user_id = n_member
+	gosub *str_time
+	user_entry_time = time
+	user_id_situation = "ID有効"
+
+	directory += "\n"+str(user_id)+"\n"+user_name+"\n"+user_entry_time
+	notesave dir_cur+"/user_file/directory.ini"
+	notesel user_data
+	mkdir dir_cur+"/user_file/"+user_name	
+	notesave dir_cur+"/user_file/"+user_name+"/"+user_name+".ini"
+
+	notesel html_style
+	noteload dir_cur+"/user_file/style.html"
+		noteget aaa,0
+			user_html  = aaa+user_name+"\n"
+		noteget aaa,1
+			user_html += aaa+user_id+"\n"
+		noteget aaa,2
+			user_html += aaa+user_entry_time+"\n"
+		noteget aaa,3
+			user_html += aaa+user_id_situation+"\n"
+		noteget aaa,4
+			user_html += aaa+"\n"
+	notesel user_html
+	notesave dir_cur+"/user_file/"+user_name+"/"+user_name+".html"
+	
+;stop ===
+	
+*menu_user
+	title "ユーザ画面 = ようこそ "+user_name+" さん = "+ver
+	clrobj 0,-1
+	color 0,0,0 : boxf
+
+	objsize sx-10,20
+	pos 5,5
+		button gosub "登録情報を見る",*see_user_info_html
+		button "このIDを放棄する",*del_id
+		button "違うIDで挑戦する",*menu_start
+		button gosub "終了する",*owari
+	
+	color 128,0,0 : boxf 0,90,sx,sy
+	pos 5,95
+		button "Level  1　…　1の位＋1の位",*tashizann_1_1
+		button "Level  2　…　10の位＋1の位",*t
+		button "Level  3　…　10の位＋10の位",*t
+		button "Level  4　…　100の位＋10の位",*t
+		button "Level  5　…　100の位＋100の位",*t
+		button "Level  6　…　",*t
+		button "Level  7　…　",*t
+		button "Level  8　…　",*t
+		button "Level  9　…　",*t
+		button "Level 10　…　",*t
+*t
+stop
+
+*del_id
+	dialog "本当に削除してよろしいですか？",3,ver
+	if stat = 6 {
+		deletefolder dir_cur+"/user_file/"+user_name
+		goto *menu_start
+	}
+
+stop
+
+*tashizann_1_1
+	title "Level  1　…　1の位＋1の位 = "+user_name+" さん = "+ver
+	clrobj 0,-1
+	color 0,0,0 : boxf
+
+	a = 10 : b = 10
+	repeat
+		wait 5 : redraw 0
+			 color b,b,b
+			 	pos (sx-300)/2,sy/2-10
+			 	font "ＭＳ ゴシック",20,1+16 : mes "Spaceをクリックすると始めます。"
+			 	b += a
+			 	if b > 245 : a = 0-a
+			 	if b < 10  : a = 0-a
+
+			 getkey c,32
+			 if c = 1 :break
+		redraw 1
+	loop
+	redraw 1
+
+	seikai = 0
+	matigai = 0
+	color 0,0,0 : boxf
+	
+	repeat 5
+		a = rnd(9)+1
+		b = rnd(9)+1
+		pos sx/2+20,sy/2-100
+		 	font "ＭＳ ゴシック",60,1+16 : color 255,255,255
+		 	mes a
+			mes b
+		pos sx/2-90,sy/2-40
+			mes "+"
+		boxf sx/2-110,sy/2+20,sx/2+60,sy/2+23
+
+		comp_ans = a+b
+		dim user_ans,7
+		user_ans_v = 0
+		a = 0
+		c = 0
+		
+		repeat
+			wait 5
+			repeat 9
+				getkey a,48+cnt
+					if a = 1 : c = 1 : n = cnt : break
+				getkey a,96+cnt
+					if a = 1 : c = 1 : n = cnt : break
+				getkey a,13
+					if a = 1 : c = 2 : break
+				getkey a,8
+					if a = 1 : c = 3 : break
+			loop
+			
+			if c = 1 {
+				posi_ans ++
+				if posi_ans >= 3 : c = 2
+				pos sx/2+80-posi_ans*60,sy/2+20
+				mes n
+				user_ans(posi_ans) = n
+				wait 10
+				c = 0
+			}
+			
+			if c = 2 {
+				user_ans(0) = user_ans(1)+user_ans(2)+user_ans(3)+user_ans(5)+user_ans(6)
+				if comp_ans = user_ans(0) {
+					seikai ++
+					color 0,0,0 : boxf
+					user_ans = 0
+					posi_ans = 0
+					c = 0
+					wait 10
+					break
+				}
+				else {
+					matigai ++
+					color 0,0,0 : boxf sx/2-110,sy/2+23,sx/2+60,sy/2+90
+					user_ans = 0
+					posi_ans = 0
+					color 255,255,255
+					wait 10
+					c = 0
+				}
+			}
+			if c = 3 {
+				if posi_ans = 0 {
+				}
+				else {
+					color 0,0,0
+					boxf sx/2+80-posi_ans*60,sy/2+25,sx/2+80-(posi_ans-1)*60,sy/2+83
+					user_ans = 
+					posi_ans --
+					
+					color 255,255,255
+					c = 0
+					wait 10
+				}
+			}
+		loop
+	loop
+
+pos 0,0
+	color 255,255,255
+	a = strf("%3.3f",(1.00 - double(matigai)/double(seikai))*100)
+	
+stop
+;SUB-----------------------------------------------------------------------------------
+*see_user_info_html
+		exec dir_cur+"/user_file/"+user_name+"/"+user_name+".html",16
+	return
+	
+*str_time
+	time = str(gettime(0))+"年"
+	if gettime(1) >= 10 : time += str(gettime(1)) : else : time += "0"+str(gettime(1))
+		time += "月"
+	if gettime(3) >= 10 : time += str(gettime(3)) : else : time += "0"+str(gettime(3))
+		time += "日("
+	switch gettime(2)
+		case 0
+			time += "日)"
+			swbreak
+		case 1
+			time += "月)"
+			swbreak
+		case 2
+			time += "火)"
+			swbreak
+		case 3
+			time += "水)"
+			swbreak
+		case 4
+			time += "木)"
+			swbreak	
+		case 5
+			time += "金)"
+			swbreak
+		case 6
+			time += "土)"
+			swbreak
+		default
+			dialog "Error!",1,ver : a = 1/0
+			swbreak
+	swend
+	if gettime(4) >= 10 : time += str(gettime(4)) : else : time += "0"+str(gettime(4))
+		time += "時"
+	if gettime(5) >= 10 : time += str(gettime(5)) : else : time += "0"+str(gettime(5))
+		time += "分"
+	if gettime(6) >= 10 : time += str(gettime(6)) : else : time += "0"+str(gettime(6))
+		time += "秒"
+	if gettime(7) >= 100 {
+		time += str(gettime(7))
+	}
+	else {
+		if gettime(7) >= 10 {
+			time += "0"+str(gettime(7))
+		}
+		else {
+			time += "00"+str(gettime(7))
+		}
+	}
+		time += "ミリ秒"
+return
+
+;END-------------------------------------------------------
+*owari
+	dialog "終了します",2,ver
+	if stat = 6 : end
+return
+	
