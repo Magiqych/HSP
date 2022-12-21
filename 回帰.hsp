@@ -1,0 +1,107 @@
+screen 0,500,500
+sdim data,1200
+notesel data
+noteload "data.txt"
+n = noteinfo(0) / 2
+dim x,n/2  : xmont = 0.0
+dim y,n/2  : ymont = 0.0
+cnta = 0   : lag = 10
+maxx = 0.0 : minx = 1000
+maxy = 0.0 : miny = 1000
+wx = 480   : wy = 230
+rx = 0.0   : ry =0.0
+pr = 1
+sx = 0.0   : sy = 0.0 : sxy = 0.0 : cc = 0.0
+	repeat n
+		noteget box,cnta*2
+		x(cnta) = int(box) : xmont += x(cnta)
+		if maxx < x(cnta) : maxx = x(cnta)
+		if minx > x(cnta) : minx = x(cnta)
+		
+		noteget box,cnta*2 + 1
+		y(cnta) = int(box) : ymont += y(cnta)
+		if maxy < y(cnta) : maxy = y(cnta)
+		if miny > y(cnta) : miny = y(cnta)
+		cnta ++
+	loop
+	rx = maxx - minx : ry = maxy - miny
+	mex = 0.0 : mey = 0.0
+	mex = xmont/n : mey = ymont/n
+	repeat n
+		color 0,0,0
+		circle lag + (x(cnt) - minx) * wx / rx - pr,lag + (maxy - y(cnt)) * wy / ry - pr,lag + (x(cnt) - minx) * wx / rx + pr,lag + (maxy - y(cnt)) * wy / ry + pr
+		sx  += (x(cnt) - mex)*(x(cnt) - mex)
+		sy  += (y(cnt) - mey)*(y(cnt) - mey)
+		sxy += (x(cnt) - mex)*(y(cnt) - mey)
+	loop
+	sx  = sx/n
+	sy  = sy/n
+	sxy = sxy/n
+	cc = sxy/sqrt(sx)/sqrt(sy)
+
+	pos 30,lag + wy + 50 - 40
+	mes "****************** 基本統計情報 ******************"
+	mes "               X                  Y       "
+	pos 30,lag + wy + 50
+	mes "平均値"
+	pos 150,lag + wy + 50
+	mes str(mex)
+	pos 300,lag + wy + 50
+	mes str(mey)
+
+	pos 30,lag + wy + 50 + 20
+	mes "標準偏差"
+	pos 150,lag + wy + 50 + 20
+	mes str(sx)
+	pos 300,lag + wy + 50 + 20
+	mes str(sy)
+
+	pos 30,lag + wy + 50 + 40
+	mes "最大値"
+	pos 150,lag + wy + 50 + 40
+	mes str(maxx)
+	pos 300,lag + wy + 50 + 40
+	mes str(maxy)
+
+	pos 30,lag + wy + 50 + 60
+	mes "最小値"
+	pos 150,lag + wy + 50 + 60
+	mes str(minx)
+	pos 300,lag + wy + 50 + 60
+	mes str(miny)
+
+	pos 30,lag + wy + 50 + 80
+	mes "範囲"
+	pos 150,lag + wy + 50 + 80
+	mes str(rx)
+	pos 300,lag + wy + 50 + 80
+	mes str(ry)
+
+	pos 30,lag + wy + 50 + 100
+	mes "データ数"
+	pos 220,lag + wy + 50 + 100
+	mes str(n/2)
+
+	pos 30,lag + wy + 50 + 120
+	mes "共分散"
+	pos 220,lag + wy + 50 + 120
+	mes str(sxy)
+
+	pos 30,lag + wy + 50 + 140
+	mes "相関係数"
+	pos 220,lag + wy + 50 + 140
+	mes str(cc)
+
+	color 0,200,0
+	pos 30,lag + wy + 50 + 160
+	mes "回帰直線 1"
+	pos 150,lag + wy + 50 + 160
+	mes "Y = " + str(sxy/sx) + " X + " + str(mey - (sxy/sx)*mex)
+	line lag,lag + wy * (1 - ((minx - mex)*sxy/sx + mey)/rx),lag + maxx * wx / rx,lag + wy * (1 - ((maxx - mex)*sxy/sx + mey)/rx)
+
+	color 0,0,200
+	pos 30,lag + wy + 50 + 180
+	mes "回帰直線 2"
+	pos 150,lag + wy + 50 + 180
+	mes "X = " + str(sxy/sy) + " Y + " + str(mex - (sxy/sy)*mey)
+	line lag + (maxy - miny * sxy/sy - mex + mey * sxy/sy) * wy / ry,lag + wy,lag + (maxy - maxy * sxy/sy - mex + mey * sxy/sy) * wy / ry,lag
