@@ -1,0 +1,48 @@
+mes "Ç®ë“ÇøÇ≠ÇæÇ≥Ç¢"
+sdim note,1000
+scor(0) = 0.0
+box = ""
+lag = 60
+div = 10
+dim scor,div
+notesel note
+	noteload "data.txt"
+	num = noteinfo(0)
+	repeat num
+		noteget box,cnt
+		scor(int(int(box)/div)) ++
+	loop
+	pos 0,div*20+10
+	mes "*********Frequency*********"
+	mes "RangeÅ@ Å@   Frequency             Cumulative"
+	amont = 0.0
+repeat div
+	color 0,0,0
+		amont += scor(cnt)
+		pos 0,cnt * 20
+		mes str(cnt*div) + " - " + str((cnt+1)*div - 1)
+		pos 0,250 + cnt * 20
+		mes str(cnt*div) + " - " + str((cnt+1)*div - 1)
+		pos 100,250 + cnt * 20
+		mes str(scor(cnt))
+		pos 160,250 + cnt * 20
+		mes str(scor(cnt)*100/num)+"%"
+		pos 280,250 + cnt * 20
+		mes str(int(amont))
+		pos 340,250 + cnt * 20
+		mes str(amont/num*100)+"%"
+	boxf lag,cnt*20,scor(cnt)*100*20/num+lag,(cnt+1)*20
+	color 255,255,255
+	boxf lag+1,cnt*20+1,scor(cnt)*100*20/num+lag-1,(cnt+1)*20-1
+loop
+	color 0,0,0
+		pos 0,
+		mes "0 - 100"
+		pos 100,250 + div * 20
+		mes str(int(amont))
+		pos 160,250 + div * 20
+		mes str(amont/num*100)+"%"
+		pos 280,250 + div * 20
+		mes str(int(amont))
+		pos 340,250 + div * 20
+		mes str(amont/num*100)+"%"

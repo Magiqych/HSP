@@ -1,0 +1,79 @@
+#include "hspda.as"
+w = 1
+repeat 20
+	 sdim data,12000
+	 notesel data
+	 noteload "data"+str(w)+".txt"
+	 n = noteinfo(0)
+	 amont = 0.0	
+ 	min = 1000 : max = 0
+ 	ql = 0.0
+	qu = 0.0
+	r = 0.0
+	qr = 0.0
+	qd = 0.0
+	qv = 0.0
+	qs = 0.0
+	cv = 0.0
+	sk = 0.0
+	ku = 0.0
+	mua = 0.0
+	mub = 0.0
+ 	dim set,n
+ 	dim sor,n
+ 	repeat n
+		noteget box,cnt
+		set(cnt) = int(box)
+		amont += set(cnt)
+		if min > set(cnt) : min = set(cnt)
+		if max < set(cnt) : max = set(cnt)
+	loop
+	sortval set
+	m = n
+	me = amont / n
+	s = 0.0
+	con = 0 : conn = 0
+	sor(0) = set(0)
+	repeat n - 1
+		if set(cnt) = set(cnt + 1) {
+			m --
+			con ++
+		}
+		else {
+			sor(conn) = set(cnt + 1)
+			conn ++
+		}
+		s  += set(cnt) * set(cnt)
+		md += abs(set(cnt) - me)
+		mua = (set(cnt) - me)*(set(cnt) - me)*(set(cnt) - me)
+		mub = (set(cnt) - me)*(set(cnt) - me)*(set(cnt) - me)*(set(cnt) - me)
+	loop
+	s = s/n - me*me
+	sd = sqrt(s)
+	if int(m/2)*2 = m {
+		m = sor(conn/2)
+	}
+	else {
+		m = sor(int(conn/2) + 1)
+	}
+	ql = set(con/4)
+	qu = set(con*3/4)
+	r = max - min
+	qr = qu - ql
+	qd = (qu - ql)/2
+	qv = 100 * (qu - ql) / (qu + ql)
+	qs = (qu + ql - 2 * m)/(qu - ql)
+	cv = s/me
+	sk = -mua/s/s/s
+	ku = mub/s/s/s/s - 3
+	lag = 100 : lon = 300
+	p = w * 20 - 80
+	color 0,0,0
+	line lag+min*lon/r,100+p,lag + max*lon/r,100+p
+	boxf lag + (me - sd)* lon / r,95+p,lag + (me + sd) * lon / r,105+p
+	color 255,255,255
+	boxf lag + (me - sd)* lon / r + 1,95 + 1+p,lag + (me) * lon / r - 1,105 - 1 + p
+	boxf lag + (me) * lon / r + 1,95 + 1+p,lag + (me + sd) * lon / r - 1,105 - 1 + p
+	w ++
+loop
+	
