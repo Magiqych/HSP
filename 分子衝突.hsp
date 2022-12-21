@@ -1,0 +1,113 @@
+
+	sx = 250 : sy = 200
+
+screen 0,sx,sy
+	color 0,0,0 : boxf
+	
+	randomize 
+
+	numtama = 50
+	maxv = 2
+	radi = 3
+	rand = 2
+	
+	dim tamax,numtama
+	dim tamay,numtama
+	dim tamavx,numtama
+	dim tamavy,numtama
+
+	repeat numtama
+		n = cnt
+		
+		tamax(n) = rnd(sx)
+		tamay(n) = rnd(sy)
+			
+		repeat n
+			m = cnt
+			if (tamax(m)=tamax(n))and(tamay(m)=tamay(n)) {
+				repeat
+					wait 10
+					tamax(n) = rnd(sx)
+					tamay(n) = rnd(sy)
+					if (tamax(m)!tamax(n))or(tamay(m)!tamay(n)) : break	
+				loop
+			}
+		loop
+
+		
+		tamavx(n) = rnd(maxv)
+			m = rnd(2)
+			if m = 1 : tamavx(n) = 0 - tamavx(n)
+		tamavy(n) = rnd(maxv)
+			m = rnd(2)
+			if m = 1 : tamavy(n) = 0 - tamavy(n)
+			
+	loop
+
+*main
+	repeat
+	redraw 0
+		wait 1
+		color 0,0,0 : boxf
+		
+		repeat numtama
+			n = cnt
+			tamax(n) = tamax(n) + tamavx(n) + rnd(rand) - rnd(rand)
+				if 0 > tamax(n) {
+					tamax(n) = 0 - tamax(n)
+					tamavx(n) = 0 - tamavx(n)
+				}
+				if tamax(n) > sx {
+					tamax(n) = 2*sx - tamax(n)
+					tamavx(n) = 0 - tamavx(n)
+				}
+			tamay(n) = tamay(n) + tamavy(n) + rnd(rand) - rnd(rand)
+				if 0 > tamay(n) {
+					tamay(n) = 0 - tamay(n)
+					tamavy(n) = 0 - tamavy(n)
+				}
+				if tamay(n) > sy {
+					tamay(n) = 2*sy - tamay(n)
+					tamavy(n) = 0 - tamavy(n)
+				}
+		loop
+
+		repeat numtama
+			n = cnt
+			repeat n
+				m = cnt
+				if radi*radi > (tamax(m)-tamax(n))*(tamax(m)-tamax(n))+(tamay(m)-tamay(n))*(tamay(m)-tamay(n)) {
+					tamavx(m) =( tamavx(m) + tamavx(n) )
+					tamavx(n) =( tamavx(n) + tamavx(m) )
+					tamavy(m) =( tamavy(m) + tamavy(n) )
+					tamavy(n) =( tamavy(n) + tamavy(m) )
+					color 200,0,0 : circle tamax(n)-radi*3,tamay(n)-radi*3,tamax(n)+radi*3,tamay(n)+radi*3
+				}
+			loop
+			if tamavx(n) > maxv : tamavx(n) = maxv
+			if tamavy(n) > maxv : tamavy(n) = maxv
+		loop
+			
+
+		gosub *draw_tama
+
+	redraw 1
+	loop
+
+*draw_tama
+	repeat numtama
+		if int((cnt+0)/3)*3 = cnt + 0 {
+			color 0,200,0
+		}
+		if int((cnt+1)/3)*3 = cnt + 1 {
+				color 200,0,0
+		}
+		if int((cnt+2)/3)*3 = cnt + 2 {
+			color 0,0,200
+		}
+		if cnt = 1 : color 200,200,200
+		n = cnt
+		circle tamax(n)-radi,tamay(n)-radi,tamax(n)+radi,tamay(n)+radi
+	loop
+return
+	
