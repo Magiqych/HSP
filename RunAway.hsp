@@ -1,0 +1,134 @@
+
+	ver = "RunAway ver1.00"
+	sx = 500 : sy = 500
+
+screen 0,sx,sy
+	title ver
+	en = 20 ;敵機数
+*start
+	;便宜変数
+		a = 0 : b = 0 : c = 0 : d = 0 : e = 0
+
+	;勝ちまでのカウントダウン
+		count =500
+		tmake = 0
+	
+	;自機の変数定義
+		px = sx/2 : py = sy/2 ;座標
+		pr = 3 ;半径
+		ps = 2 ;速さ
+		p_l = 0 : p_u = 0 : p_r = 0 : p_d = 0 ;キー対応番号(左上右下)
+
+	;敵機の変数定義
+		ewidth = 20
+		dim ebsit,en
+		ebv = ps+2 ;玉の速度
+		ddim ebx,en : ddim eby,en ;玉の座標
+		theta = 0.0 ;玉の発射角度
+		ddim ebvx,en : ddim ebvy,en ;玉の速度成分
+		dim eb,en : ebtime = 10 ;玉発射のタイムラグ
+		dim ex,en : dim ey,en ;座標
+			repeat en
+				a = cnt
+				repeat
+					ex(a) = rnd(sx)
+					ey(a) = rnd(sy)
+					eb(a) = rnd(ebtime)
+					if (ewidth<ex(a))and(ex(a)<sx-ewidth) {
+						if (ewidth<ey(a))and(ey(a)<sy-ewidth) {
+						}
+						else {
+							break
+						}
+					}
+					else {
+						break
+					}
+				loop
+			loop
+		er = 3 ;半径
+		es = 1 ;速さ
+		e_l = 0 : e_u = 0 : e_r = 0 : e_d = 0 ;キー対応番号(左上右下)
+		
+
+	repeat
+		redraw 0
+			color 0,0,0 : boxf
+			gosub *move_i
+			gosub *move_e
+			gosub *atari : if tmake == 1 : tmake = 0 : goto *make
+			count -- : if count < 0 : goto *kati
+			title ver+"残り "+str(count)
+		wait 1 : redraw 1
+	loop
+	
+	stop
+	
+*kati
+	dialog "あなたの勝ちです。"
+	en += 10
+	goto *start
+	
+*make
+	dialog "あなたの負けです。"
+	goto *start
+
+*atari
+	repeat en
+		a = cnt
+		if pr*pr > (px-ex(a))*(px-ex(a))+(py-ey(a))*(py-ey(a)) : tmake = 1
+		if pr*pr > (px-ebx(a))*(px-ebx(a))+(py-eby(a))*(py-eby(a)) : tmake=1
+	loop
+return
+*move_e
+	repeat en
+		a = cnt
+
+		if eb(a) = 0 {
+			eb(a) = ebtime
+			ebsit(a) = 1
+			theta = atan(double((py-ey(a))),double((px-ex(a))))
+			ebvx(a) = cos(theta) * ebv
+			ebvy(a) = sin(theta) * ebv
+			ebx(a) = double(ex(a))
+			eby(a) = double(ey(a))
+		}
+		if ebsit(a) = 1 {
+			ebx(a) += ebvx(a)
+			eby(a) += ebvy(a)
+
+			if ebx(a) < 0 : ebsit(a) = 0
+			if ebx(a) > sx : ebsit(a) = 0
+			if eby(a) < 0 : ebsit(a) = 0
+			if eby(a) > sy : ebsit(a) = 0
+
+			color 255,255,255 : pset ebx(a),eby(a)
+		}
+		else {
+			eb(a) --
+		}
+
+		if ex(a) > px : e_l = 1 : e_r = 0
+		if ex(a) < px : e_l = 0 : e_r = 1
+		if ey(a) > py : e_u = 1 : e_d = 0
+		if ey(a) < py : e_u = 0 : e_d = 1
+
+		ex(a) += (e_r - e_l) * es
+		ey(a) += (e_d - e_u) * es
+		color 0,0,200
+		circle ex(a)-er,ey(a)-er,ex(a)+er,ey(a)+er
+	loop
+return
+*move_i
+	getkey p_l,37
+	getkey p_u,38
+	getkey p_r,39
+	getkey p_d,40
+	px += (p_r - p_l) * ps
+	py += (p_d - p_u) * ps
+	if px < 0 : px = 0
+	if py < 0 : py = 0
+	if px > sx - pr : px = sx - pr 
+	if py > sy - pr : py = sy - pr
+	color 0,200,0 : circle px-pr,py-pr,px+pr,py+pr
+return
