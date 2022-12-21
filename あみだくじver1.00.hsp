@@ -1,0 +1,79 @@
+	ver = "あみだくじver1.00"
+	sx = 500 : sy = 300
+screen 0,sx,sy
+title ver
+	lag = 20
+
+	color 200,230,230 : boxf
+	color 0,0,0 : font "ＭＳ ゴシック",14
+	pos 10,12 : mes "くじの数"
+	pos 90,10 : input n,,,1
+	pos 160,10 : button "くじの作成",*make_kuji
+	pos 10,60 : mes "くじの内容"
+	pos 200,60 : mes "名前を入力"
+	stop
+
+*make_kuji
+	if n = 0 : stop
+	sdim kuji,n
+	sdim name,n
+	sdim name_kuji,n
+	namelist = ""
+	dim namelistnumber,n
+	redraw 0
+		pos 0,0 : input n
+		clrobj 2,-1
+		dim a,n : b = 0
+		repeat
+			a(b) = rnd(n)
+			repeat b
+				if a(b) = a(cnt) : b -= 1
+			loop
+			b++
+			if b = n : break
+			wait 0
+		loop
+		repeat n
+			pos 90,60+25*cnt : input kuji(a(cnt))
+			pos 280,60+25*cnt : input name(cnt)
+		loop
+	redraw 1
+	if n > 0 : pos sx-80,sy-40 : button "次に>>",*next_a
+	stop
+*next_a
+	clrobj 0,-1
+	pos 100,0 : button "結果発表！",*disp
+	color 200,230,230 : boxf
+	color 0,0,0 : pos 8,0 : mes "名前を選択"
+	repeat n
+		namelist += name(cnt)+"\n"
+	loop
+	;redraw 0
+		dim b,n
+		repeat n
+			pos 10,20+(lag+10)*cnt : combox namelistnumber(cnt),,namelist
+			line 20,30+(lag+10)*cnt,sx-100,30+(lag+10)*cnt
+			pos sx-90,20+(lag+10)*cnt+3 : mes kuji(cnt)
+			name_kuji(cnt) = kuji(cnt)
+			b(cnt) = cnt
+		loop
+		buffer 10 : gcopy 0,0,0,sx,sy : gsel 0
+		color 100,100,100 : boxf sx-100,0,sx,sy
+		
+		
+		repeat 10
+			a = rnd(n-1)
+			line sx-100-20*cnt,30+(lag+10)*a,sx-100-20*cnt,30+30+(lag+10)*a
+			c = b(a)
+			b(a+1) = b(a)
+			b(a) = c
+		loop
+		
+	redraw 1
+
+stop
+*disp
+	repeat n
+		dia += name(cnt)+" = "+kuji(b(cnt))+"\n"
+	loop
+	dialog dia
