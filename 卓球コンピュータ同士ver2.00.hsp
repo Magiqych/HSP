@@ -1,0 +1,260 @@
+
+	sx = 800 : sy = 400
+	ver = "卓球コンピュータ同士ver1.00 "
+
+screen 0,sx,sy+20
+	draw = 1 : rand = 0
+	pos 0,sy : objsize 300,20 : chkbox "AI思考描写を有効(有効にすると少し重くなります)", draw
+	pos 300,sy : objsize 200,20 : combox rand,,"ボールのブレ乱数範囲指定\n2\n3\n4\n5\n6\n7"
+
+*syokika
+	color 0,0,0 : boxf
+	color 240,240,240 : boxf 0,sy,sx,sy+20
+	
+	pl = 20 : pf = 2 : ps = 1
+	px = 0 : py = 0
+	p_set = 0
+	ipx = sx-pf : ipy = (sy - pl)/2
+	dim p_s_by,sx : p_s_katamuki = double(p_s_katamuki) : dim p_s_le,sx : dim p_s_ti,sx
+	
+	el = 20 : ef = 2 : es = 1
+	ex = sx-ef : ey = (sy - el)/2
+	e_set = 0
+	iex = sx-ef : iey = (sy - el)/2
+	dim e_s_by,sx : e_s_katamuki = double(e_s_katamuki) : dim e_s_le,sx : dim e_s_ti,sx
+	
+	bx = 0.0f + sx/2 : by = 0.0f + sy/2
+	bvx = 4.0 : bvy = 5.0
+	radi = 3
+
+	gosub *re_tit
+
+	repeat
+		redraw 0
+		gosub *draw_bg
+		gosub *move_ball
+		gosub *draw_ball
+		gosub *player
+		gosub *enemy
+		redraw 1 : wait 0
+	loop
+*enemy
+	;if bvx > 0 {
+		if rbx-bx = 0 {
+			iex = last_iex
+			iey = last_iey
+		}
+		else {
+			e_s_katamuki = double(((rby-by)/(rbx-bx)))
+			if e_s_katamuki = 0 {
+				iex = last_iex
+				iey = last_iey
+			}
+			else {
+				repeat sx
+					n = cnt
+					e_s_by(n) = int(double(e_s_katamuki)*(n-bx) + by)
+					if e_s_by(n) > 0 {
+						m = 0
+						m = int(e_s_by(n)/sy)
+						e_s_by(n) -= sy * m
+						if int((m+1)/2)*2 = m+1 : e_s_by(n) = sy - e_s_by(n)
+					}
+					
+					if e_s_by(n) < 0 {
+						m = 0
+						m = abs(int(e_s_by(n)/sy))
+						e_s_by(n) += sy * m
+						if int(m/2)*2 = m {
+							e_s_by(n) = abs(e_s_by(n))
+						}
+						else {
+							e_s_by(n) = sy - abs(e_s_by(n))
+						}
+						
+					}
+					e_s_le(n) = (n - (ex + ef/2))*(n - (ex + ef/2)) + (e_s_by(n) - (ey+el/2))*(e_s_by(n) - (ey+el/2))	
+					e_s_ti(n) = e_s_le(n) / (4*es*es)
+					if draw : color 0,0,255 : pset n,e_s_by(n);@@@
+				loop
+			
+				min = e_s_le(1)
+				repeat sx/2
+					n = cnt + sx/2
+					if (min > e_s_le(n))and(n > bx) {
+						min = e_s_le(n)
+						iex = n
+						iey = e_s_by(n) - el/2
+					}
+				loop
+				last_iex = iex
+				last_iey = iey
+				if draw : color 0,0,255 : line iex+ef/2,iey+el/2,ex+ef/2,ey+el/2;@@@
+			}
+		
+		}
+		else {
+			iex = sx - ef
+			iey = (sy - el)/2
+		}
+	;}
+	;else {
+	;	iex = sx - ef
+	;	iey = (sy - el)/2
+	;}
+
+	if draw : color 0,0,255 : boxf iex-3+ef/2,iey-3+el/2,iex+3+ef/2,iey+3+el/2;@@@
+
+	if iex > ex : ex += es
+	if iex < ex : ex -= es
+	if iey > ey : ey += es
+	if iey < ey : ey -= es
+
+	if ex < sx/2 : ex = sx/2
+	if ey < 0 : ey = 0
+	if ex > sx - ef : ex = sx - ef 
+	if ey > sy - el : ey = sy - el
+	
+	color 100,255,150 : boxf ex,ey,ex+ef,ey+el
+return
+	
+*player
+	if rbx-bx = 0 {
+		ipx = last_ipx
+		ipy = last_ipy
+	}
+	else {
+		p_s_katamuki = double(((rby-by)/(rbx-bx)))
+		if p_s_katamuki = 0 {
+			ipx = last_ipx
+			ipy = last_ipy
+		}
+		else {
+			repeat sx
+				n = cnt
+				p_s_by(n) = int(double(p_s_katamuki)*(n-bx) + by)
+				if p_s_by(n) > 0 {
+					m = 0
+					m = int(p_s_by(n)/sy)
+					p_s_by(n) -= sy * m
+					if int((m+1)/2)*2 = m+1 : p_s_by(n) = sy - p_s_by(n)
+				}
+				
+				if p_s_by(n) < 0 {
+					m = 0
+					m = abs(int(p_s_by(n)/sy))
+					p_s_by(n) += sy * m
+					if int(m/2)*2 = m {
+						p_s_by(n) = abs(p_s_by(n))
+					}
+					else {
+						p_s_by(n) = sy - abs(p_s_by(n))
+					}
+					
+				}
+				p_s_le(n) = (n - (px + pf/2))*(n - (px + pf/2)) + (p_s_by(n) - (py+pl/2))*(p_s_by(n) - (py+pl/2))	
+				p_s_ti(n) = p_s_le(n) / (4*ps*ps)
+				if draw : color 0,0,255 : pset n,p_s_by(n);@@@
+			loop
+			
+			min = p_s_le(1)
+			repeat sx/2
+				n = cnt
+				if (min > p_s_le(n))and(n < bx) {
+					min = p_s_le(n)
+					ipx = n
+					ipy = p_s_by(n) - pl/2
+				}
+			loop
+			last_ipx = ipx
+			last_ipy = ipy
+			if draw : color 0,0,255 : line ipx+pf/2,ipy+pl/2,px+pf/2,py+pl/2;@@@
+		}
+			
+	}
+	else {
+		ipx = 0
+		ipy = (sy - pl)/2
+	}
+
+	if draw : color 0,0,255 : boxf ipx-3+pf/2,ipy-3+pl/2,ipx+3+pf/2,ipy+3+pl/2;@@@
+
+	if ipx > px : px += ps
+	if ipx < px : px -= ps
+	if ipy > py : py += ps
+	if ipy < py : py -= ps
+
+	if px > sx/2 : px = sx/2
+	if py < 0 : py = 0
+	if px < 0 : px = 0 
+	if py > sy - pl : py = sy - pl
+
+	color 0,200,255 : boxf px,py,px+pf,py+pl
+return
+
+*draw_ball
+	color 0,0,255
+		circle bx-radi,by-radi,bx+radi,by+radi
+return
+
+*move_ball
+	rbx = bx : rby = by
+	bx = bx + bvx ;+ rnd(rand) - rnd(rand)
+		if 0 > bx {
+			bx = 0.0f - bx
+			bvx = 0.0f - bvx
+			e_set ++
+			title ver + "[ COM1 " + str(p_set) + " - " + str(e_set) + " COM2 ] "
+			color 255,0,0 : boxf 0,0,10,sy
+		}
+		if bx > sx {
+			bx = 0.0f + 2*sx - bx
+			bvx = 0.0f - bvx
+			color 255,0,0 : boxf sx,0,sx-10,sy
+			p_set ++
+			title ver + "[ COM1 " + str(p_set) + " - " + str(e_set) + " COM2 ] "
+		}
+		a = bvy + rnd(rand + 1) - rnd(rand + 1)
+		
+	by = by + bvy + rnd(rand + 1) - rnd(rand + 1)
+		if 0 > by {
+			by = 0.0f - by
+			bvy = 0.0f - bvy
+		}
+		else {
+			if by > sy {
+				by = 0.0f + 2*sy - by
+				bvy = 0.0f - bvy
+			}
+		}
+		if (bx-2*bvx > px)and(px > bx+2*bvx) {
+			repeat pf
+				if (py+pl > (px+cnt-bx)+by)and((px+cnt-bx)+by > py) {
+					bvx = 0.0f - bvx
+					bx += bvx
+					break
+				}
+			loop
+		}
+		if (bx+2*bvx > ex)and(ex > bx-2*bvx) {
+			repeat ef
+				if (ey+el > (ex+cnt-bx)+by)and((ex+cnt-bx)+by > ey) {
+					bvx = 0.0f - bvx
+					bx -= bvx
+					break
+				}
+			loop
+		}
+return
+
+*draw_bg
+	color 0,0,0 : boxf
+	color 240,240,240 : boxf 0,sy,sx,sy+20
+	color 0,255,0
+		line sx/2,0,sx/2,sy
+		circle sx/2-30,sy/2-30,sx/2+30,sy/2+30,0
+return
+
+*re_tit
+	title ver + "[ COM1 " + str(p_set) + " - " + str(e_set) + " COM2 ] "
+return
