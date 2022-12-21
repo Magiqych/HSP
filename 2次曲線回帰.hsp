@@ -1,0 +1,34 @@
+screen 0,500,100
+mes "三点を入力することで、2次曲線を推測する。"
+
+objsize ,14
+pos 0,20
+	mes "(x1,y1) = (         ,        )"
+	a1 = 0.0 : a2 = 2.0
+	pos 90,20 : input a1
+	pos 170,20 : input a2
+
+pos 0,40
+	mes "(x2,y2) = (         ,        )"
+	b1 = 1.0 : b2 = 0.0
+	pos 90,40 : input b1
+	pos 170,40 : input b2
+pos 0,60
+	mes "(x2,y2) = (         ,        )"
+	c1 = 2.0 : c2 = 2.0
+	pos 90,60 : input c1
+	pos 170,60 : input c2
+
+objsize ,20
+pos 300,40
+	button "実行",*main
+
+*main
+	a = ((a1-b1)*c2-(a2-b2)*c1+b1*a2-a1*b2)/((a1-b1)*(c1*c1-(a1+b1)*c1+a1*b1))
+	b = (a2-b2-a*(a1*a1-b1*b1))/(a1-b1)
+	c = (b1*a2-a1*b2-a1*b1*(a1-b1)*a)/(b1-a1)
+	color 240,240,255 : boxf 0,80,ginfo_sizex,ginfo_sizey
+pos 0,80
+	color 0,0,0
+	mes "y = " + str(a) + "x^2 + " + str(b) + "x + " + str(c)
+stop
