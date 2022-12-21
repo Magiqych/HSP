@@ -1,0 +1,418 @@
+
+	gsel 0,-1	
+	;++++++++++++++++++++++++++++++++++++++++
+
+	ver = "Missile Defence ver 2.501"
+
+	;++++++++++++++++++++++++++++++++++++++++
+
+	bgscr 2,832,243,,(ginfo(20)-832)/2,(ginfo(21)-243)/2
+		picload "Missile_Def.bmp"
+
+		font "MSゴシック",10 : color 255,255,255
+		pos 680,160 : mes ver
+		
+		wait 300
+		gsel 2,-1
+		
+*restart
+#include "d3m.hsp"
+#include "hspda.as"
+	sx = ginfo(20)-20
+	sy = ginfo(21)-70
+	pi = 3.1416
+	g  = 9.8067/500
+	seido = 8
+
+screen 0,sx,sy,,5,5 : title ver
+gsel 0,2
+;被迎撃質点の描写変数設定
+	ex1 = double(ex1) : ey1 = double(ey1) : ez1 = double(ez1)
+	ex = double(ex) : ey = double(ey) : ez = double(ez)
+	es = double(es)
+	esx = double(esx) : esy = double(esy) : esz = double(esz)
+	eda = double(eda) : edb = double(edb)
+	epe = double(epe) : ese = double(ese)
+;+++ Default
+	ex = double(-2000) : ey = double(-2000) : ez = double(0)
+	es = double(10)
+	eda = double(0.25*pi)
+	edb = double(0.25*pi)
+	
+;迎撃質点の描写変数設定
+	mx = double(mx) : my = double(my) : mz = double(mz)
+	ms = double(ms)
+	msx = double(msx) : msy = double(msy) : msz = double(msz)
+	mda = double(eda) : mdb = double(mdb)
+	mpe = double(mpe) : mse = double(mse)
+;+++ Default
+	mx = double(2000) : my = double(-1000) : mz = double(10)
+	ms = double(10)
+	
+;思考システム変数
+	mem = 5000
+	ddim aiex,mem : ddim aiey,mem : ddim aiez,mem
+
+;その他の変数
+	a = int(a) : b = int(b) : c = int(c)
+
+;描写ルーチン
+	color 0,0,0 : boxf
+	;d3setcam  0, -6000, 2500,  0, 0, 0
+	d3mkparticle 1, 255, 0, 0 ; 敵
+	d3mkparticle 2, 0, 255, 0 ; 味方
+
+	pos sx-65,sy-50 : button gosub "ヘルプ",*help
+					: button gosub "スクリプト",*script
+	pos 0,685 : objsize sx,20 : button "発射",*start
+;格子の描写
+	buffer 10,sx,sy
+	color 0,0,0 : boxf
+	d3setcam 0, -6000, 2500,  0, 0, 0
+		koushi_gap = 100
+		repeat 60
+			a = cnt - 30
+			repeat 60
+				b = cnt - 30
+				color 0,20,0
+				d3line a*koushi_gap,b*koushi_gap,0,a*koushi_gap,(b+1)*koushigap,0
+				d3line b*koushi_gap,a*koushi_gap,0,(b+1)*koushigap,a*koushi_gap,0
+			loop	
+		loop
+;詳細情報の描写
+	color 100,100,100 : boxf 695,sy-115,696,sy
+	color 0,255,0 : pos 10,sy-110 : font "MSゴシック",15,16
+		mes "飛翔体の情報"
+		mes "--飛翔体の初期条件"
+		mes "----飛翔体の初期速度"
+		mes
+		mes "----飛翔体の初期座標"
+	pos 225,sy-100	
+		mes "----飛翔体の初期発射角度α"
+		mes 
+		mes "----飛翔体の初期発射角度β"
+	pos 430,sy-110
+		mes "--飛翔体の現在の状況"
+		mes "----飛翔体の現在速度"
+		mes
+		mes "----飛翔体の現在座標"
+		
+	pos 700,sy-110
+		mes "迎撃弾頭の情報"
+		mes "--迎撃弾頭の初期条件"
+		mes "----迎撃弾頭の初期速度"
+		mes
+		mes "----迎撃弾頭の初期座標"
+	pos 925,sy-115
+		mes "--システム分析結果"
+		mes "----迎撃弾頭の初期角度α"
+		mes
+		mes "----迎撃弾頭の初期角度β"
+	pos 1120,sy-110
+		mes "--迎撃弾頭の現在の状況"
+		mes "----迎撃弾頭の現在速度"
+		mes
+		mes "----迎撃弾頭の現在座標"
+	pos sx/2+10,sy-145
+		mes "物体間の距離"
+	gsel 0
+
+	objsize 70,15 : font "MSゴシック",10,16 : objmode 2
+	pos 150,sy-65 : input es
+	pos 10,sy-35 : input ex : pos 80,sy-35 : input ey : pos 150,sy-35 : input ez
+	pos 345,sy-85 : input eda
+	pos 345,sy-55 : input edb
+
+	pos 840,sy-65 : input ms
+	pos 700,sy-35 : input mx : pos 770,sy-35 : input my : pos 840,sy-35 : input  mz
+
+	pos
+	repeat
+		redraw 0
+			gosub *draw_missile
+		redraw 1
+		wait 10
+	loop
+stop
+
+*start
+	clrobj
+	pos 0,685 : objsize sx/2,20 : button "リセット",*restart
+	ex1 = ex : ey1 = ey : ez1 = ez
+	mx1 = mx : my1 = my : mz1 = mz
+	esx = double(es*cos(eda)*cos(edb))
+	esy = double(es*sin(eda)*cos(edb))
+	esz = double(es*sin(edb))
+	situ = 0
+
+	gosub *computing
+	
+	repeat
+		ex += esx : ey += esy : ez += esz : esz -= g
+		if ez < 0 {
+			dialog "着弾しました。",0,ver
+			gosub *fail
+			break
+		}
+		if cnt = min_n - min_time{
+			mx += msx : my += msy : mz += msz : msz -= g
+			situ = 1
+			title "迎撃システムが迎撃ミサイルを発射しました。 --- "+ver
+		}
+		if situ = 1{
+			mx += msx : my += msy : mz += msz : msz -= g
+		}
+		if sqrt((mx-ex)*(mx-ex)+(my-ey)*(my-ey)+(mz-ez)*(mz-ez)) < seido {
+			redraw 0
+				gosub *draw_missile
+				gosub *draw_info
+			redraw 1
+			dialog "迎撃成功！",0,ver
+			title "システムが迎撃に成功しました。 --- "+ver
+			break
+		}
+		redraw 0
+			gosub *draw_missile
+			gosub *draw_info
+		redraw 1
+		await 0
+	loop
+
+	stop
+
+*script
+	exec "script.txt",16
+	return
+*help
+	exec "helper.htm",16
+	return
+*fail
+		mess  = "システムは迎撃に失敗しました。\n\n"
+		mess += "システムの精度向上のために、\n"
+		mess += "現在のシステム状況を記録したデータファイルを、\n"
+		mess += "作成することを許可していただけますか？"
+		dialog mess,2,ver
+		if stat = 6 {
+			sdim note,12000
+			date = str(gettime(0))+"年"+str(gettime(1))+"月"+str(gettime(3))+"日"+str(gettime(4))+"時"+str(gettime(5))+"分"+str(gettime(6))+"秒"+str(gettime(7))+"ミリ秒"
+			vsave "エラー報告書 --- "+date+".dat"
+			dialog "以下の名前で保存しました。\n\n　\"エラー報告書 --- "+date+".dat\"",0,ver
+		}
+		goto *restart
+	return
+*computing
+	gsel 0
+	dialog "解析に時間がかかります\n最終計算結果を視覚化しますか。",2,ver
+	if stat = 6 : sw2 =1 : else : sw2 = 0
+	title "解析中 Process 1 --- "+ver
+	color 0,255,0
+	d3particle 2, ex1,ey1,ez1, 10
+	mes "解析中 Process 1　飛翔体の飛翔軌道シミュレーション"
+	ddim cex,1000 : ddim cey,1000 : ddim cez,1000
+	cesx = esx : cesy = esy : cesz = esz
+	repeat
+		if cnt = 0 {
+			cex(cnt) = ex1 : cey(cnt) = ey1 : cez(cnt) = ez1
+		}
+		else {
+			cex(cnt) = cex(cnt-1)+cesx : cey(cnt) = cey(cnt-1)+cesy : cez(cnt) = cez(cnt-1)+cesz : cesz -= g
+		}
+		if cez(cnt) < 0 {
+			n = cnt
+			break
+		}
+		;@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+		d3particle 1, cex(cnt), cey(cnt), cez(cnt), 10
+		;@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+		await 0
+	loop
+
+	title "解析中 Process 2 --- "+ver
+	d3particle 2, cmx1,my1,mz1, 10
+	mes "解析中 Process 2　飛翔軌道より最短距離計算"
+	dim l,n
+	repeat n
+		l(cnt) = (mx1-cex(cnt))*(mx1-cex(cnt))+(my1-cey(cnt))*(my1-cey(cnt))+(mz1-cez(cnt))*(mz1-cez(cnt))
+		if cnt = 0 : min = l(cnt)
+		if l(cnt) < min {
+			min = l(cnt)
+			min_n = cnt
+		}
+		await 0
+	loop
+	title "解析中 Process 3 --- "+ver
+	mes "解析中 Process 3　最終計算"
+	mda = atan(my1-cey(min_n),mx1-cex(min_n))
+buffer 20,sx,sy
+	pos 0,0
+	gcopy 0,0,0,sx,sy
+gsel 0 
+	;@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+	color 0,0,255
+	d3line mx1,my1,0,mx1+cos(mda)*1000,my1+sin(mda)*1000,0
+	d3line mx1,my1,0,cex(min_n),cey(min_n),0
+	d3line mx1,my1,0,cex(min_n),cey(min_n),cez(min_n)
+	d3line cex(min_n),cey(min_n),0,cex(min_n),cey(min_n),cez(min_n)
+	;@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+*rere
+	a = 0.1 : b = 0 : mdb = pi : mdb_b = pi/2
+	if cez(min_n) < mz1 : mdb = pi*3/2
+	mini = 0 : mini_d = 0.0
+	min_time = 0
+	go_launch = "false"
+	sw1 = 0
+	
+	repeat
+		await 0
+		b = cnt
+		cmx = mx1
+		cmy = my1
+		cmz = mz1
+		cmsx = double(cos(mda)*cos(mdb)*ms)
+		cmsy = double(sin(mda)*cos(mdb)*ms)
+		cmsz = double(sin(mdb)*ms)
+		cmin = sqrt((cmx-cex(min_n))*(cmx-cex(min_n))+(cmy-cey(min_n))*(cmy-cey(min_n))+(cmz-cez(min_n))*(cmz-cez(min_n)))
+		repeat
+			await 0
+			cmx += cmsx : cmy += cmsy : cmz += cmsz : cmsz -= g
+			;@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+			if sw2 = 1 {
+				d3particle 2, cmx, cmy, cmz, 10
+			}
+			;@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+			cmin_l = sqrt((cmx-cex(min_n))*(cmx-cex(min_n))+(cmy-cey(min_n))*(cmy-cey(min_n))+(cmz-cez(min_n))*(cmz-cez(min_n)))
+			if cmin_l < seido {
+				if min_time = 0 {
+					min_time = cnt
+					min_time_d = mdb
+				}
+				else {
+					if min_time > cnt{
+						min_time = cnt
+						min_time_d = mdb
+					}
+				}
+				if min_n - min_time < 0 {
+				}
+				else{
+					go_launch = "true"
+				}
+			}
+			if cmin > cmin_l : cmin = cmin_l 
+			if cmz < 0 {
+				if b = 0{
+					mini = cmin
+					mini_d = mdb
+				}
+				else{
+					if mini > cmin{
+						mini = cmin
+						mini_d = mdb
+					}
+				}
+				break
+			}
+		loop
+		mdb -= a
+		if mdb < 0.0{
+			mdb = mini_d + a
+			mdb_b = mini_d - a
+			a = a*0.1
+			if go_launch = "true" : break
+			;if min_n > min_time {
+			;	sw1 = 1
+			;else{
+			;	if sw1 = 1{
+			;	}
+			;	else{
+			;		if min_n < min_time {
+			;			goto *pre_rere
+			;		}
+			;	}
+			;}
+		}
+		if mdb < mdb_b {
+			mdb = mini_d + a
+			mdb_b = mini_d - a
+			a = a*0.1
+			if go_launch = "true" : break
+		}
+		if a < 0.001 {
+*pre_rere
+			min_n ++
+			mda = atan(my1-cey(min_n),mx1-cex(min_n))
+			if min_n > n : break
+			redraw 0
+				pos 0,0
+				gmode 0
+				gcopy 20,0,0,sx,sy
+				gmode 5, , , 255
+				;@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+				color 0,0,255
+				d3line mx1,my1,0,mx1+cos(mda)*1000,my1+sin(mda)*1000,0
+				d3line mx1,my1,0,cex(min_n),cey(min_n),0
+				d3line mx1,my1,0,cex(min_n),cey(min_n),cez(min_n)
+				d3line cex(min_n),cey(min_n),0,cex(min_n),cey(min_n),cez(min_n)
+				;@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+			redraw 1
+			goto_rere = "true"
+			break
+		}
+	loop
+	if goto_rere = "true" : goto_rere = "false" : goto *rere
+	mdb = min_time_d
+	dialog "解析終了しました。",0,ver
+	msx = double(cos(mda)*cos(mdb)*ms)
+	msy = double(sin(mda)*cos(mdb)*ms)
+	msz = double(sin(mdb)*ms)
+	title "システム待機中 --- "+ver
+	if min_n - min_time < 0 {
+		dialog "迎撃ミサイルの初速度では迎撃不可能です。",0,ver
+	}
+	return
+*draw_info
+	color 0,255,255 : font "MSゴシック",12,16
+	pos 100,sy-62
+		mes es
+	pos 10,sy-30
+		mes "("+str(ex1)+" , "+str(ey1)+" , "+str(ez1)+")"
+	pos 360,sy-82	
+		mes	str(eda/pi)+" π" 
+	pos 360,sy-52
+		mes str(edb/pi)+" π"
+	pos 530,sy-78
+		mes sqrt(esx*esx+esy*esy+esz*esz)
+	pos 430,sy-48
+		mes "("+str(ex)+" , "+str(ey)+" , "+str(ez)+")"
+		
+	pos 820,sy-62
+		mes ms
+	pos 700,sy-30
+		mes "("+str(mx1)+" , "+str(my1)+" , "+str(mz1)+")"
+	pos 1045,sy-82
+		mes str(mda/pi)+" π" 
+	pos 1045,sy-50
+		mes str(mdb/pi)+" π" 
+	pos 1240,sy-78
+		mes sqrt(msx*msx+msy*msy+msz*msz)
+	pos 1120,sy-48
+		mes "("+str(mx)+" , "+str(my)+" , "+str(mz)+")"	
+	pos sx/2+110,sy-140
+		mes sqrt((mx-ex)*(mx-ex)+(my-ey)*(my-ey)+(mz-ez)*(mz-ez))
+	return
+*draw_missile
+		color 0,0,0 : boxf
+		pos 0,0 : gcopy 10,0,0,sx,sy
+		miskage = 3000
+		gmode 5, , , 50
+		color 50,0,0
+			d3particle 1, ex, ey, 0,150
+			d3line ex,ey,ez,ex,ey,0
+		color 0,50,0
+			d3particle 2, mx, my, 0,150
+			d3line mx,my,mz,mx,my,0
+		gmode 5, , , 255
+		d3particle 1, ex, ey, ez, 20
+		d3particle 2, mx, my, mz, 20
+return
+	
