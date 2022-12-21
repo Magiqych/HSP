@@ -1,0 +1,28 @@
+screen 0,ginfo_dispx,260,,0
+#include "hspda.as"
+sdim data,12000
+notesel data
+noteload "data.txt"
+num = noteinfo(0)
+max = 0 : min = 1000
+box = ""
+leaf = 1
+dim set,num
+sdim sor,200,10
+	repeat num
+		noteget box,cnt
+		set(cnt) = int(box)
+		if max < set(cnt) : max = set(cnt)
+		if min > set(cnt) : min = set(cnt)
+	loop
+	mes "最小値 = " + str(min) + "  最大値 = " + str(max) + "　データ数 = " + str(num)
+	mes "リーフの位 = " + str(leaf)
+	sortval set
+	font "ＭＳ ゴシック",10
+	repeat num
+		sor(int(set(cnt)/1000)) += str(int(set(cnt) - int(set(cnt)/1000)*1000)/100)
+	loop
+	repeat 10
+		pos 20,40+cnt*20
+		mes str(cnt) + " | " + sor(cnt)
+	loop
